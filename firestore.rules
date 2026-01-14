@@ -1,0 +1,121 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* =========================
+       Helper functions
+    ========================= */
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      ).data;
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() &&
+             getUserData().role == 'superadmin';
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+             getUserData().role == 'admin';
+    }
+
+    function isCollegeAdmin() {
+      return isAuthenticated() &&
+             getUserData().role == 'collegeadmin';
+    }
+
+    function isSameCollege(collegeId) {
+      return isAuthenticated() &&
+             getUserData().collegeId == collegeId;
+    }
+
+    /* =========================
+       🔥 GLOBAL SUPERADMIN OVERRIDE
+       (write anywhere)
+    ========================= */
+    match /{document=**} {
+      allow write: if isSuperAdmin();
+    }
+
+    /* =========================
+       Folders
+    ========================= */
+    match /folders/{folderId} {
+      // Allow authenticated users to create/update folders
+      allow create, update: if isAuthenticated();
+
+      allow delete: if isSuperAdmin() ||
+                     isCollegeAdmin() ||
+                     isAdmin();
+    }
+
+    /* =========================
+       Users
+    ========================= */
+    match /users/{userId} {
+
+      // Create: user can only create their own profile
+      // Role is forced to 'user' (no self-promotion)
+      allow create: if isAuthenticated()
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.role == 'user';
+
+      // Update: user can update own profile
+      // BUT cannot touch protected fields
+      allow update: if isAuthenticated()
+        && request.auth.uid == userId
+        && !request.resource.data
+          .diff(resource.data)
+          .affectedKeys()
+          .hasAny([
+            'role',
+            'isPremium',
+            'timeSpent',
+            'xp',
+            'contributions'
+          ]);
+
+      // No deletes (except superadmin via override)
+      allow delete: if false;
+    }
+
+    /* =========================
+       Courses
+    ========================= */
+    match /courses/{courseId} {
+      allow create, update,delete:
+        if true;
+    }
+
+    /* =========================
+       Skills
+    ========================= */
+    match /skills/{skillId} {
+      allow create, update, delete:
+        if isSuperAdmin();
+    }
+
+    /* =========================
+       Downloads
+    ========================= */
+    match /downloads/{downloadId} {
+      allow create, update, delete:
+        if isAuthenticated();
+    }
+
+    /* =========================
+       Global read access
+    ========================= */
+    match /{document=**} {
+      allow read: if true;
+    }
+  }
+}
