@@ -1,19 +1,31 @@
-import { useState, useEffect, useMemo } from 'react';
-import { collection, query, where, getDocs, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
-import { Search, Filter, LayoutGrid, X } from 'lucide-react';
-import { db } from '../firebase/config';
-import { useAuth } from '../context/AuthContext';
-import CourseCard from '../components/CourseCard';
-import Fuse from 'fuse.js';
-import { TypeAnimation } from 'react-type-animation';
-import toast, { Toaster } from 'react-hot-toast';
+import { useState, useEffect, useMemo } from "react";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
+  getDoc,
+} from "firebase/firestore";
+import { Search, Filter, LayoutGrid, X } from "lucide-react";
+import { db } from "../firebase/config";
+import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
+import CourseCard from "../components/CourseCard";
+import Fuse from "fuse.js";
+import { TypeAnimation } from "react-type-animation";
+import toast, { Toaster } from "react-hot-toast";
 
 const Home = () => {
   const { user, userProfile } = useAuth();
+  const { isDarkMode } = useTheme();
   const [courses, setcourses] = useState([]);
   const [enrolledCourses, setEnrolledCourses] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterView, setFilterView] = useState('enrolled'); // 'enrolled' or 'all'
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterView, setFilterView] = useState("enrolled"); // 'enrolled' or 'all'
   const [loading, setLoading] = useState(true);
   const [hasFetched, setHasFetched] = useState(false);
 
@@ -28,9 +40,9 @@ const Home = () => {
   const fetchCourses = async () => {
     try {
       // Fetch user's document directly by UID
-      const userDocRef = doc(db, 'users', user.uid);
+      const userDocRef = doc(db, "users", user.uid);
       const userDocSnap = await getDoc(userDocRef);
-      
+
       if (!userDocSnap.exists()) {
         setEnrolledCourses([]);
         setcourses([]);
@@ -51,10 +63,12 @@ const Home = () => {
       }
 
       // Fetch the user's college document
-      const userCollegeSnapshot = await getDocs(query(
-        collection(db, 'colleges'),
-        where('collegeId', '==', userCollegeId)
-      ));
+      const userCollegeSnapshot = await getDocs(
+        query(
+          collection(db, "colleges"),
+          where("collegeId", "==", userCollegeId)
+        )
+      );
 
       if (userCollegeSnapshot.empty) {
         // College not found
@@ -77,70 +91,70 @@ const Home = () => {
 
       // Fetch only courses for this college using where query
       const coursesQuery = query(
-        collection(db, 'courses'),
-        where('collegeId', '==', userCollegeId)
+        collection(db, "courses"),
+        where("collegeId", "==", userCollegeId)
       );
       const coursesSnapshot = await getDocs(coursesQuery);
-      const allCourses = coursesSnapshot.docs.map(doc => ({
+      const allCourses = coursesSnapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }));
 
       setEnrolledCourses(enrolled);
       setcourses(allCourses);
-      
+
       // If user has no enrolled courses, automatically switch to "all" view
       if (enrolled.length === 0) {
-        setFilterView('all');
+        setFilterView("all");
       }
-      
+
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching courses:', error);
+      console.error("Error fetching courses:", error);
       setLoading(false);
     }
   };
 
   const handleEnroll = async (courseId) => {
     try {
-      const userDocRef = doc(db, 'users', user.uid);
+      const userDocRef = doc(db, "users", user.uid);
 
       await updateDoc(userDocRef, {
-        enrolledCourses: arrayUnion(courseId)
+        enrolledCourses: arrayUnion(courseId),
       });
 
       setEnrolledCourses([...enrolledCourses, courseId]);
-      toast.success('Enrolled successfully');
+      toast.success("Enrolled successfully");
     } catch (error) {
-      console.error('Error enrolling in course:', error);
-      toast.error('Failed to enroll');
+      console.error("Error enrolling in course:", error);
+      toast.error("Failed to enroll");
     }
   };
 
   const handleUnenroll = async (courseId) => {
     try {
-      const userDocRef = doc(db, 'users', user.uid);
+      const userDocRef = doc(db, "users", user.uid);
 
       await updateDoc(userDocRef, {
-        enrolledCourses: arrayRemove(courseId)
+        enrolledCourses: arrayRemove(courseId),
       });
 
-      setEnrolledCourses(enrolledCourses.filter(id => id !== courseId));
-      toast.success('Unenrolled successfully');
+      setEnrolledCourses(enrolledCourses.filter((id) => id !== courseId));
+      toast.success("Unenrolled successfully");
     } catch (error) {
-      console.error('Error unenrolling from course:', error);
-      toast.error('Failed to unenroll');
+      console.error("Error unenrolling from course:", error);
+      toast.error("Failed to unenroll");
     }
   };
 
   // Configure Fuse.js for fuzzy search
   const fuse = useMemo(() => {
     return new Fuse(courses, {
-      keys: ['name'],
+      keys: ["name"],
       threshold: 0.6, // More lenient - 0 = exact match, 1 = match anything
       ignoreLocation: true,
       minMatchCharLength: 1, // Match even single characters
-      distance: 100
+      distance: 100,
     });
   }, [courses]);
 
@@ -150,14 +164,14 @@ const Home = () => {
     // Apply fuzzy search if there's a search query
     if (searchQuery.trim()) {
       const fuseResults = fuse.search(searchQuery);
-      results = fuseResults.map(result => result.item);
+      results = fuseResults.map((result) => result.item);
       // When searching, show all matching courses regardless of filter
       return results;
     }
 
     // Apply enrollment filter only when not searching
-    if (filterView === 'enrolled') {
-      results = results.filter(course => enrolledCourses.includes(course.id));
+    if (filterView === "enrolled") {
+      results = results.filter((course) => enrolledCourses.includes(course.id));
     }
 
     return results;
@@ -172,43 +186,70 @@ const Home = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Toaster 
+    <div
+      className={`min-h-screen ${isDarkMode ? "bg-gray-900" : "bg-gray-50"}`}
+    >
+      <Toaster
         position="top-right"
         toastOptions={{
           duration: 3000,
-          style: { background: '#363636', color: '#fff' },
-          success: { style: { background: '#10b981' } },
-          error: { style: { background: '#ef4444' } },
+          style: { background: "#363636", color: "#fff" },
+          success: { style: { background: "#10b981" } },
+          error: { style: { background: "#ef4444" } },
         }}
       />
       {/* Header */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-10">
+      <div
+        className={`shadow-sm sticky top-0 z-10 ${
+          isDarkMode
+            ? "bg-gray-800 border-b border-gray-700"
+            : "bg-white border-b border-gray-200"
+        }`}
+      >
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4 md:mb-6">Course Overview</h1>
-          
+          <h1
+            className={`text-2xl md:text-3xl font-bold ${
+              isDarkMode ? "text-white" : "text-gray-800"
+            } mb-4 md:mb-6`}
+          >
+            Course Overview
+          </h1>
+
           {/* Search and Filter Bar */}
           <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
             <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Search
+                className={`absolute left-4 top-1/2 transform -translate-y-1/2 ${
+                  isDarkMode ? "text-gray-400" : "text-gray-400"
+                }`}
+                size={20}
+              />
               <input
                 type="text"
                 placeholder=""
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  isDarkMode
+                    ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                    : "bg-white border-gray-300 text-gray-900"
+                }`}
               />
               {!searchQuery && (
-                <div className="absolute left-12 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
+                <div
+                  className={`absolute left-12 top-1/2 transform -translate-y-1/2 pointer-events-none ${
+                    isDarkMode ? "text-gray-400" : "text-gray-400"
+                  }`}
+                >
                   <TypeAnimation
                     sequence={[
-                      'Search for Machine Learning...',
+                      "Search for Machine Learning...",
                       2000,
-                      'Search for Data Structures...',
+                      "Search for Data Structures...",
                       2000,
-                      'Search for Artificial Intelligence...',
+                      "Search for Artificial Intelligence...",
                       2000,
-                      'Search for Algorithms...',
+                      "Search for Algorithms...",
                       2000,
                     ]}
                     wrapper="span"
@@ -218,25 +259,37 @@ const Home = () => {
                 </div>
               )}
             </div>
-            
-            <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+
+            <div
+              className={`flex items-center gap-2 rounded-lg p-1 ${
+                isDarkMode ? "bg-gray-700" : "bg-gray-100"
+              }`}
+            >
               <button
-                onClick={() => setFilterView('enrolled')}
+                onClick={() => setFilterView("enrolled")}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  filterView === 'enrolled'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                  filterView === "enrolled"
+                    ? isDarkMode
+                      ? "bg-gray-600 text-white shadow-sm"
+                      : "bg-white text-gray-900 shadow-sm"
+                    : isDarkMode
+                    ? "text-gray-300 hover:text-white"
+                    : "text-gray-600 hover:text-gray-900"
                 }`}
               >
                 <Filter size={16} className="inline mr-2" />
                 My Courses
               </button>
               <button
-                onClick={() => setFilterView('all')}
+                onClick={() => setFilterView("all")}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  filterView === 'all'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                  filterView === "all"
+                    ? isDarkMode
+                      ? "bg-gray-600 text-white shadow-sm"
+                      : "bg-white text-gray-900 shadow-sm"
+                    : isDarkMode
+                    ? "text-gray-300 hover:text-white"
+                    : "text-gray-600 hover:text-gray-900"
                 }`}
               >
                 All Courses
@@ -249,26 +302,62 @@ const Home = () => {
       {/* Course Grid */}
       <div className="max-w-7xl mx-auto px-8 py-8">
         {!userProfile?.collegeId ? (
-          <div className="text-center py-16 bg-white rounded-lg shadow-sm">
+          <div
+            className={`text-center py-16 rounded-lg ${
+              isDarkMode ? "bg-gray-800 shadow-lg" : "bg-white shadow-sm"
+            }`}
+          >
             <div className="max-w-md mx-auto">
-              <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              <svg
+                className="mx-auto h-16 w-16 text-gray-400 mb-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
               </svg>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Access Restricted</h3>
-              <p className="text-gray-600 mb-4">
-                Your email domain ({user?.email?.split('@')[1]}) is not associated with any registered institution.
+              <h3
+                className={`text-xl font-semibold mb-2 ${
+                  isDarkMode ? "text-white" : "text-gray-800"
+                }`}
+              >
+                Access Restricted
+              </h3>
+              <p
+                className={`mb-4 ${
+                  isDarkMode ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
+                Your email domain ({user?.email?.split("@")[1]}) is not
+                associated with any registered institution.
               </p>
-              <p className="text-sm text-gray-500">
-                Please sign in with your institutional email address to access courses.
+              <p
+                className={`text-sm ${
+                  isDarkMode ? "text-gray-500" : "text-gray-500"
+                }`}
+              >
+                Please sign in with your institutional email address to access
+                courses.
               </p>
             </div>
           </div>
         ) : filteredCourses.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-gray-500 text-lg">No courses found</p>
-            {filterView === 'enrolled' && (
+            <p
+              className={`text-lg ${
+                isDarkMode ? "text-gray-400" : "text-gray-500"
+              }`}
+            >
+              No courses found
+            </p>
+            {filterView === "enrolled" && (
               <button
-                onClick={() => setFilterView('all')}
+                onClick={() => setFilterView("all")}
                 className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
               >
                 View all courses
@@ -280,7 +369,7 @@ const Home = () => {
             {filteredCourses.map((course, index) => (
               <div key={course.id} className="relative group">
                 <CourseCard course={course} index={index} />
-                
+
                 {/* Enroll/Unenroll button */}
                 <div className="absolute top-4 right-4 transition-opacity">
                   {enrolledCourses.includes(course.id) ? (
@@ -289,10 +378,18 @@ const Home = () => {
                         e.stopPropagation();
                         handleUnenroll(course.id);
                       }}
-                      className="p-1 hover:bg-gray-100 rounded transition-colors"
+                      className={`p-1 rounded transition-colors ${
+                        isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
+                      }`}
                       title="Unenroll"
                     >
-                      <X size={20} strokeWidth={3} className="text-gray-700" />
+                      <X
+                        size={20}
+                        strokeWidth={3}
+                        className={
+                          isDarkMode ? "text-gray-300" : "text-gray-700"
+                        }
+                      />
                     </button>
                   ) : (
                     <button

@@ -1,7 +1,7 @@
-import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
-import toast, { Toaster } from 'react-hot-toast';
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import toast, { Toaster } from "react-hot-toast";
 
 const Login = () => {
   const { signInWithGoogle, user } = useAuth();
@@ -9,39 +9,37 @@ const Login = () => {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate("/");
     }
   }, [user, navigate]);
 
   const handleSignIn = async () => {
     try {
       await signInWithGoogle();
-      toast.success('Logged in successfully');
+      toast.success("Logged in successfully");
     } catch (error) {
-      console.error('Login failed:', error);
-      toast.error('Failed to login. Please try again');
+      console.error("Login failed:", error);
+      toast.error("Failed to login. Please try again");
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-      <Toaster 
+      <Toaster
         position="top-right"
         toastOptions={{
           duration: 3000,
-          style: { background: '#363636', color: '#fff' },
-          success: { style: { background: '#10b981' } },
-          error: { style: { background: '#ef4444' } },
+          style: { background: "#363636", color: "#fff" },
+          success: { style: { background: "#10b981" } },
+          error: { style: { background: "#ef4444" } },
         }}
       />
       <div className="bg-white p-8 rounded-lg shadow-2xl max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">
-            Padho BC
-          </h1>
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">Padho BC</h1>
           <p className="text-gray-600">Sign in with your college mail id</p>
         </div>
-        
+
         <button
           onClick={handleSignIn}
           className="w-full bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-3 shadow-sm"
